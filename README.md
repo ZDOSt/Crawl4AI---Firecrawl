@@ -1,33 +1,62 @@
-# Firecrawl-Crawl4AI Adapter
+# Crawl4AI-Firecrawl-Adapter
 
-A small adapter that lets LibreChat (and maybe other apps) use Crawl4AI through LibreChat's Firecrawl scraper setting.
+A lightweight Firecrawl-compatible scrape adapter for Crawl4AI.
+
+Built for LibreChat, but it can also work with other apps that only need Firecrawl-style scrape endpoints.
 
 ## What It Does
 
-LibreChat expects a Firecrawl-style scrape API.
+Some apps expect a Firecrawl-style API for scraping web pages.
 Crawl4AI uses a different API.
 This adapter sits in the middle and translates the requests.
 
+Supported endpoints:
+
+- `POST /v1/scrape`
+- `POST /scrape`
+- `POST /v0/scrape`
+- `GET /health`
+
 ## Requirements
 
-- LibreChat
+- Docker Compose
 - Crawl4AI
-- Docker
+- An app that can talk to a Firecrawl-compatible scrape API
 
 ## Install
 
-1. Put the `firecrawl-crawl4ai-adapter` folder next to your `docker-compose.yml`.
-2. Add the adapter service to your Compose file.
-3. Point LibreChat's Firecrawl settings to the adapter.
-4. Build and restart the services.
+### 1. Clone the repo
 
-## Example Docker Compose
+Clone this repo next to the folder that contains your existing `docker-compose.yml`:
+
+```bash
+git clone https://github.com/ZDOSt/Crawl4AI-Firecrawl-Adapter.git
+```
+
+To update later:
+
+```bash
+cd Crawl4AI-Firecrawl-Adapter
+git pull
+```
+
+This repo contains the actual adapter in the `firecrawl-crawl4ai-adapter` folder.
+
+### 2. Add the adapter to Docker Compose
+
+Example:
 
 ```yaml
 services:
+  crawl4ai:
+    image: unclecode/crawl4ai:latest
+    container_name: crawl4ai
+    restart: unless-stopped
+    shm_size: 2gb
+
   firecrawl-crawl4ai-adapter:
     build:
-      context: ./firecrawl-crawl4ai-adapter
+      context: ./Crawl4AI-Firecrawl-Adapter/firecrawl-crawl4ai-adapter
     container_name: firecrawl-crawl4ai-adapter
     environment:
       PORT: 3002
@@ -36,12 +65,22 @@ services:
     depends_on:
       - crawl4ai
     restart: unless-stopped
-    network:
 ```
 
-## LibreChat Settings
+If your stack uses custom Docker networks, make sure your app, `crawl4ai`, and `firecrawl-crawl4ai-adapter` are on the same network.
 
-Set these environment variables for LibreChat:
+If you copy only the inner `firecrawl-crawl4ai-adapter` folder into your stack instead of cloning the whole repo, change the build path to:
+
+```yaml
+build:
+  context: ./firecrawl-crawl4ai-adapter
+```
+
+### 3. Point your app at the adapter
+
+Set your Firecrawl URL to the adapter.
+
+For LibreChat:
 
 ```env
 FIRECRAWL_API_URL=http://firecrawl-crawl4ai-adapter:3002
@@ -49,7 +88,7 @@ FIRECRAWL_API_KEY=change-me
 FIRECRAWL_VERSION=v1
 ```
 
-In `librechat.yaml`, use Firecrawl as the scraper:
+In `librechat.yaml`:
 
 ```yaml
 webSearch:
@@ -58,47 +97,33 @@ webSearch:
   firecrawlApiUrl: "${FIRECRAWL_API_URL}"
 ```
 
-## What You Can Change
-
-- `FIRECRAWL_API_KEY`: can be any shared value, as long as LibreChat and the adapter use the same one.
-- `CRAWL4AI_BASE_URL`: change this if your Crawl4AI service has a different name or port.
-- `PORT`: change this if you want the adapter to listen on a different internal port.
-- `context: ./firecrawl-crawl4ai-adapter`: change this if the adapter folder is in a different location.
-- `networks`: if your stack uses custom Docker networks, make sure LibreChat, Crawl4AI, and the adapter are on the same network.
-
-## Clone Or Update
-
-Clone the repo:
-
-```bash
-git clone https://github.com/YOURNAME/YOURREPO.git
-```
-
-Pull the latest changes later:
-
-```bash
-cd YOURREPO
-git pull
-```
-
-If you are using this repo only for the adapter, place it next to the folder that contains your existing `docker-compose.yml`, then point the Compose `context` to the adapter folder.
-
-Example:
-
-```yaml
-build:
-  context: ./YOURREPO/firecrawl-crawl4ai-adapter
-```
-
-## Start
+### 4. Build and start
 
 ```bash
 docker compose build firecrawl-crawl4ai-adapter
-docker compose up -d firecrawl-crawl4ai-adapter librechat
+docker compose up -d firecrawl-crawl4ai-adapter
 ```
+
+If your app also needs a restart to pick up the new settings, restart it too.
+
+For LibreChat:
+
+```bash
+docker compose up -d librechat
+```
+
+## What You Can Change
+
+- `FIRECRAWL_API_KEY`: can be any shared value, as long as your app and the adapter use the same one.
+- `CRAWL4AI_BASE_URL`: change this if your Crawl4AI service uses a different service name or port.
+- `PORT`: change this if you want the adapter to listen on a different internal port.
+- `context`: change this if the adapter folder is in a different location.
+- Docker networks: all relevant services must be able to reach each other by service name.
 
 ## Notes
 
-- This is for LibreChat web search scraping.
-- It replaces `crawl4ai-proxy` for this use case.
+- This is a lightweight Firecrawl-compatible scrape adapter, not a full Firecrawl replacement.
+- It is mainly meant for LibreChat web search scraping.
+- It can also work with other apps that only need Firecrawl-style scrape endpoints.
+- For LibreChat, this replaces `crawl4ai-proxy` for the Firecrawl scraper use case.
 - Crawl4AI still does the actual scraping.
